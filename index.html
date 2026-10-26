@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Запись сна">
+<title>Запись сна · Ноктюрн</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600;800&display=swap">
+<style>
+/* Layout: one phone-width column (home and night report), plus a full-screen dark recording overlay */
+:root{
+  color-scheme:dark;
+  --bg:#050506; --raise:#111113; --raise-2:#1c1c1f; --raise-3:#2a2a2e; --line:#2a2a2e;
+  --fg:#f3f3f0; --muted:#9a9aa0; --dim:#5a5a60; --rec:#ff5a4f;
+  --f:"Onest",-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+  --gl:max(20px,env(safe-area-inset-left,0px)); --gr:max(20px,env(safe-area-inset-right,0px));
+  --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg);margin:0}
+body{font-family:var(--f);font-size:16px;line-height:1.4;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;touch-action:manipulation}
+button:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
+[hidden]{display:none!important}
+svg.i{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;display:block}
+svg.i .f{fill:currentColor;stroke:none}
+.wrap{max-width:560px;margin:0 auto;padding-left:var(--gl);padding-right:var(--gr);padding-top:calc(var(--st) + 12px);padding-bottom:calc(40px + var(--sb))}
+.top{display:flex;align-items:center;gap:14px;min-height:52px}
+.logo{width:46px;height:46px;border-radius:50%;background:var(--fg);color:var(--bg);display:grid;place-items:center;flex:none}
+.logo svg{width:28px;height:28px}
+.badge{border:1.5px solid var(--dim);border-radius:7px;padding:6px 8px 6px 13px;font-size:12px;letter-spacing:.42em;font-weight:500;color:var(--muted);white-space:nowrap}
+.iconbtn{width:46px;height:46px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;flex:none}
+.iconbtn svg{width:22px;height:22px}
+h1{font-size:clamp(30px,9vw,40px);font-weight:600;letter-spacing:-.02em;margin:26px 0 6px;line-height:1.05}
+.lead{color:var(--muted);margin:0;max-width:40ch}
+section{margin-top:36px}
+h2{font-size:22px;font-weight:600;margin:0 0 14px;letter-spacing:-.01em}
+
+.start{margin-top:28px;border-radius:30px;border:1.5px solid rgba(255,255,255,.14);overflow:hidden;position:relative;padding:30px 22px 24px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;
+  background:repeating-radial-gradient(circle at 50% 38%,rgba(255,255,255,.08) 0 1px,rgba(255,255,255,0) 1.5px 16px),radial-gradient(circle at 50% 38%,rgba(255,255,255,.18),rgba(255,255,255,0) 60%),#0a0a0b}
+.recbtn{width:132px;height:132px;border-radius:50%;background:var(--fg);color:var(--bg);display:grid;place-items:center;box-shadow:0 0 0 10px rgba(255,255,255,.06),0 0 0 22px rgba(255,255,255,.03)}
+.recbtn svg{width:56px;height:56px}
+.start b{font-size:20px;font-weight:600}
+.start p{margin:0;color:var(--muted);font-size:14px;max-width:34ch}
+.seg{display:flex;background:var(--raise-2);border-radius:999px;padding:4px;gap:4px;width:100%;max-width:360px}
+.seg button{flex:1;padding:10px 0;border-radius:999px;font-size:14px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);font-weight:600}
+.seglabel{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.model{font-size:13px;color:var(--dim)}
+
+.tips{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.tips li{display:flex;gap:14px;align-items:flex-start;background:var(--raise);border-radius:18px;padding:14px 16px;font-size:15px;color:#d6d6d3}
+.tips li span{width:28px;height:28px;flex:none;color:var(--muted)}
+
+.nights{display:grid;gap:10px}
+.nightcard{display:flex;flex-direction:column;gap:6px;text-align:left;background:var(--raise);border-radius:20px;padding:16px 18px;border:1px solid transparent}
+.nightcard b{font-size:17px;font-weight:600}
+.nightcard .when{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
+.nightcard .sum{font-size:14px;color:#d6d6d3}
+.empty{color:var(--muted);background:var(--raise);border-radius:20px;padding:18px}
+
+/* recording overlay */
+.rec{position:fixed;inset:0;z-index:50;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding-left:var(--gl);padding-right:var(--gr);padding-top:calc(var(--st) + 18px);padding-bottom:calc(26px + var(--sb));text-align:center}
+.rec .state{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.rec .dot{width:9px;height:9px;border-radius:50%;background:var(--rec);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.3}}
+.clock{font-size:min(28vw,150px);font-weight:300;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums;color:#8c8c90}
+.elapsed{color:var(--muted);font-variant-numeric:tabular-nums;margin-top:10px}
+.meter{width:min(70vw,300px);height:4px;border-radius:4px;background:var(--raise-2);margin:22px auto 0;overflow:hidden;position:relative}
+.meter i{position:absolute;left:0;top:0;bottom:0;width:0;background:#6d6d72;border-radius:4px;transition:width .1s linear}
+.meter s{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--fg);opacity:.5}
+.livecounts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:22px;max-width:420px}
+.chip{display:inline-flex;align-items:center;gap:8px;background:var(--raise-2);border-radius:999px;padding:8px 14px 8px 10px;font-size:14px;color:#d6d6d3;white-space:nowrap}
+.chip svg{width:20px;height:20px;color:var(--muted)}
+.chip b{font-weight:600;font-variant-numeric:tabular-nums;color:var(--fg)}
+.chip[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.chip[aria-pressed="true"] b,.chip[aria-pressed="true"] svg{color:var(--bg)}
+.stopbtn{display:inline-flex;align-items:center;gap:10px;background:var(--raise-2);border-radius:999px;padding:14px 26px;font-weight:600}
+.stopbtn svg{width:18px;height:18px;flex:none}
+.stopbtn.armed{background:var(--fg);color:var(--bg)}
+.rec .hint{color:var(--dim);font-size:13px;max-width:34ch;margin:12px auto 0}
+.dimmer{position:fixed;inset:0;z-index:60;background:#000;opacity:0;pointer-events:none;transition:opacity 1.5s}
+.dimmer.on{opacity:.88;pointer-events:auto}
+
+/* night report */
+.back{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:15px;padding:8px 0}
+.back svg{width:20px;height:20px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+.tile{background:var(--raise);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.tile b{font-size:26px;font-weight:300;font-variant-numeric:tabular-nums;line-height:1.1}
+.tile span{color:var(--muted);font-size:13px}
+.chart{background:var(--raise);border-radius:22px;padding:16px 12px 10px;position:relative}
+.chart h3{margin:0 6px 2px;font-size:15px;font-weight:600}
+.chart .cap{margin:0 6px 8px;color:var(--muted);font-size:13px}
+.chart svg{width:100%;height:190px;display:block;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--fg);color:var(--bg);border-radius:10px;padding:6px 10px;font-size:13px;font-weight:500;white-space:nowrap;transform:translate(-50%,-100%);opacity:0;transition:opacity .12s;font-variant-numeric:tabular-nums}
+.filters{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 calc(-1*var(--gr)) 14px calc(-1*var(--gl));padding:0 var(--gr) 2px var(--gl)}
+.filters::-webkit-scrollbar{display:none}
+.clips{display:grid;gap:8px}
+.clip{display:flex;align-items:center;gap:12px;background:var(--raise);border-radius:18px;padding:10px 12px 10px 10px}
+.clip .ic{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--dim);display:grid;place-items:center;flex:none;color:#d6d6d3}
+.clip .ic svg{width:24px;height:24px}
+.clip .meta{flex:1;min-width:0;display:flex;flex-direction:column}
+.clip .meta b{font-weight:500;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clip .meta span{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.play{width:42px;height:42px;border-radius:50%;background:var(--fg);color:var(--bg);display:grid;place-items:center;flex:none}
+.play svg{width:18px;height:18px}
+.del{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--dim);flex:none}
+.del svg{width:18px;height:18px}
+.del.armed{background:var(--rec);color:#fff}
+.danger{margin-top:28px;color:var(--muted);font-size:15px;padding:12px 0}
+.danger.armed{color:var(--rec)}
+.toast{position:fixed;left:50%;bottom:calc(30px + var(--sb));z-index:90;transform:translate(-50%,20px);opacity:0;background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:16px;font-size:15px;font-weight:500;transition:all .3s;pointer-events:none;max-width:calc(100% - 40px);text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.rec .dot{animation:none}.dimmer,.toast{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="home">
+  <header class="top">
+    <span class="logo" id="logo"></span>
+    <span class="badge">FULL EDITION</span>
+  </header>
+  <h1>Запись сна</h1>
+  <p class="lead">Ночью телефон слушает комнату и сохраняет только громкие моменты. Нейросеть понимает, что это было: храп, разговор во сне, собака, кашель. Утром всё можно послушать.</p>
+
+  <div class="start">
+    <button class="recbtn" id="startBtn" aria-label="Начать запись сна"></button>
+    <b>Начать запись</b>
+    <p>Экран останется включённым, но почти чёрным. Положите телефон рядом с кроватью и поставьте на зарядку.</p>
+    <span class="seglabel">Чувствительность</span>
+    <div class="seg" id="sens">
+      <button data-v="low">Низкая</button><button data-v="mid">Средняя</button><button data-v="high">Высокая</button>
+    </div>
+    <span class="model" id="modelState">Нейросеть загрузится при старте (около 15 МБ, лучше по Wi‑Fi)</span>
+  </div>
+
+  <section>
+    <h2>Прошлые ночи</h2>
+    <div class="nights" id="nights"><div class="empty">Здесь появятся ваши ночи. Запишите первую сегодня вечером.</div></div>
+  </section>
+
+  <section>
+    <h2>Как получить хорошую запись</h2>
+    <ul class="tips" id="tips"></ul>
+  </section>
+</div>
+
+<div class="wrap" id="night" hidden>
+  <button class="back" id="backBtn"></button>
+  <h1 id="nTitle">Ночь</h1>
+  <p class="lead" id="nWhen"></p>
+  <div class="tiles" id="nTiles"></div>
+  <section>
+    <div class="chart" id="chartBox">
+      <h3>Громкость в спальне</h3>
+      <p class="cap">Средний уровень за каждую минуту. Точки внизу отмечают записанные звуки.</p>
+      <svg id="chart" role="img" aria-label="График громкости за ночь"></svg>
+      <div class="tip" id="tip"></div>
+    </div>
+  </section>
+  <section>
+    <h2>Что было слышно</h2>
+    <div class="filters" id="filters"></div>
+    <div class="clips" id="clips"></div>
+  </section>
+  <button class="danger" id="delNight">Удалить эту ночь</button>
+</div>
+
+<div class="rec" id="rec" hidden>
+  <div class="state"><span class="dot"></span><span>Идёт запись</span></div>
+  <div>
+    <div class="clock" id="clock">00:00</div>
+    <div class="elapsed" id="elapsed">0 мин</div>
+    <div class="meter" aria-hidden="true"><i id="lvl"></i><s id="thr"></s></div>
+    <div class="livecounts" id="live"></div>
+  </div>
+  <div>
+    <button class="stopbtn" id="stopBtn"></button>
+    <p class="hint" id="recHint">Не блокируйте экран и не сворачивайте страницу. Экран сам потемнеет через 20 секунд, коснитесь его, чтобы вернуть.</p>
+  </div>
+</div>
+<div class="dimmer" id="dimmer"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);
+const fill=(el,h)=>{el.innerHTML=h;return el};
+
+/* ---------- icons ---------- */
+const IC={
+ logo:'<path class="f" d="M29 7a17 17 0 1 0 12 29A14.5 14.5 0 0 1 29 7z"/>',
+ mic:'<path d="M24 6a6 6 0 0 1 6 6v10a6 6 0 0 1-12 0V12a6 6 0 0 1 6-6zM12 22a12 12 0 0 0 24 0M24 34v8M18 42h12"/>',
+ stop:'<rect class="f" x="13" y="13" width="22" height="22" rx="4"/>',
+ play:'<path class="f" d="M16 10.5v27c0 1.2 1.3 1.9 2.3 1.3l21-13.5a1.5 1.5 0 0 0 0-2.6l-21-13.5c-1-.6-2.3.1-2.3 1.3z"/>',
+ pause:'<rect class="f" x="13" y="11" width="7.5" height="26" rx="2"/><rect class="f" x="27.5" y="11" width="7.5" height="26" rx="2"/>',
+ back:'<path d="M30 10L16 24l14 14"/>',
+ trash:'<path d="M10 14h28M18 14V9h12v5M14 14l2 26h16l2-26"/>',
+ snore:'<path d="M10 14h10L10 26h10M25 21h8l-8 10h8M33 8h6l-6 7h6"/>',
+ talk:'<path d="M8 11h32v19H22l-8 8v-8H8z"/><circle class="f" cx="17" cy="20.5" r="2"/><circle class="f" cx="24" cy="20.5" r="2"/><circle class="f" cx="31" cy="20.5" r="2"/>',
+ cough:'<circle cx="17" cy="24" r="9"/><path d="M28 18c4 1 6 3.5 6 6s-2 5-6 6M34 12c6 2.5 9 7 9 12s-3 9.5-9 12"/>',
+ cry:'<path d="M24 8s-10 12-10 20a10 10 0 0 0 20 0C34 20 24 8 24 8z"/>',
+ laugh:'<circle cx="24" cy="24" r="16"/><path d="M16 27q8 9 16 0M18 19v1M30 19v1"/>',
+ breath:'<path d="M6 18h22a5 5 0 1 0-5-5M6 26h30a5 5 0 1 1-5 5M6 34h14"/>',
+ dog:'<path d="M14 13l-6 13 6 2M34 13l6 13-6 2M14 13h20v15a10 10 0 0 1-20 0z"/><circle class="f" cx="24" cy="30" r="2.4"/><path d="M19 22v1M29 22v1"/>',
+ cat:'<path d="M12 23l1.5-12 8.5 7h4l8.5-7L36 23c2 4 1 9-3 12s-9 4-9 4-5-1-9-4-5-8-3-12z"/><path d="M18 27h3M27 27h3M22.5 32h3"/>',
+ bird:'<path d="M6 25c8 0 11-8 18-8 5 0 8 4 8 4l10-1-8 6c-2 8-9 12-17 12"/><circle class="f" cx="29" cy="21" r="1.4"/>',
+ mosq:'<circle cx="24" cy="11" r="3.5"/><path d="M24 15v24M24 21L11 13M24 21l13-8M24 28l-11 9M24 28l11 9"/>',
+ steps:'<path d="M16 9c4 0 5 6 5 10s-2 6-5 6-5-2-5-6 1-10 5-10zM32 21c4 0 5 6 5 10s-2 6-5 6-5-2-5-6 1-10 5-10z"/>',
+ door:'<rect x="13" y="6" width="22" height="36" rx="2"/><circle class="f" cx="30" cy="25" r="2"/>',
+ car:'<path d="M7 30v-6l5-9h24l5 9v6zM7 30v5h7v-5M34 30v5h7v-5M7 24h34"/>',
+ siren:'<path d="M14 35V24a10 10 0 0 1 20 0v11zM10 39h28M24 5v4M10 11l3 3M38 11l-3 3"/>',
+ phone:'<rect x="14" y="5" width="20" height="38" rx="3"/><path d="M21 37h6"/>',
+ rain:'<path d="M16 8l-4 9M26 6l-4 9M36 8l-4 9M20 21l-4 9M30 21l-4 9M15 34l-3 7M25 33l-3 7M35 33l-3 7"/>',
+ music:'<path d="M18 34V11l20-4v23"/><circle cx="14" cy="34" r="4.5"/><circle cx="34" cy="30" r="4.5"/>',
+ wave:'<path d="M4 24h6l4-10 6 20 6-16 4 6h14"/>',
+ screen:'<rect x="12" y="5" width="24" height="38" rx="4"/><path d="M20 10h8"/>',
+ plug:'<path d="M18 6v8M30 6v8M14 14h20v8a10 10 0 0 1-20 0zM24 32v10"/>',
+ shh:'<path d="M8 19h7l9-8v26l-9-8H8z"/><path d="M32 18l10 12M42 18L32 30"/>'
+};
+const icon=n=>`<svg class="i" viewBox="0 0 48 48" aria-hidden="true">${IC[n]||IC.wave}</svg>`;
+
+/* ---------- sound categories (indices into Google's YAMNet list of 521 sounds) ---------- */
+const CATS=[
+ {id:'snore',name:'Храп',idx:[38,41]},
+ {id:'talk',name:'Разговор во сне',idx:[0,1,2,12,65]},
+ {id:'cough',name:'Кашель и чихание',idx:[42,43,44]},
+ {id:'cry',name:'Плач',idx:[19,20]},
+ {id:'laugh',name:'Смех',idx:[13,14,17]},
+ {id:'breath',name:'Тяжёлое дыхание',idx:[23,33,36,37,39]},
+ {id:'dog',name:'Собака',idx:[69,70,72,74,75,117]},
+ {id:'cat',name:'Кошка',idx:[76,77,78,80]},
+ {id:'bird',name:'Птицы',idx:[106,107,116]},
+ {id:'mosq',name:'Комар',idx:[121,123]},
+ {id:'steps',name:'Шаги',idx:[48]},
+ {id:'door',name:'Двери, стук, скрип',idx:[348,351,352,353,355,460,480]},
+ {id:'car',name:'Транспорт за окном',idx:[294,300,301,302,310,320,321,323,326,329,330,331,334,337,343]},
+ {id:'siren',name:'Сирена или сигнализация',idx:[304,316,317,318,319,382,389,390,391,393,394]},
+ {id:'phone',name:'Телефон',idx:[383,384,385]},
+ {id:'rain',name:'Дождь, гроза, ветер',idx:[277,280,281,283,284,285]},
+ {id:'music',name:'Музыка или ТВ',idx:[132,518]},
+ {id:'other',name:'Другой звук',idx:[]},
+ {id:'pending',name:'Ещё не распознано',idx:[]}
+];
+const CBY={};CATS.forEach(c=>CBY[c.id]=c);
+const catIcon=id=>({other:'wave',pending:'wave'})[id]||id;
+
+/* ---------- storage: IndexedDB keeps nights and the recorded moments on this phone ---------- */
+let dbp=null;
+function db(){if(dbp)return dbp;dbp=new Promise((res,rej)=>{const r=indexedDB.open('noct-sleep',1);
+  r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('nights',{keyPath:'id'});const c=d.createObjectStore('clips',{keyPath:'id'});c.createIndex('night','night')};
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});return dbp}
+const tx=async(store,mode,fn)=>{const d=await db();return new Promise((res,rej)=>{const t=d.transaction(store,mode),s=t.objectStore(store);let out;const r=fn(s);if(r)r.onsuccess=()=>{out=r.result};t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error)})};
+const put=(store,v)=>tx(store,'readwrite',s=>s.put(v));
+const getAll=store=>tx(store,'readonly',s=>s.getAll());
+const getOne=(store,k)=>tx(store,'readonly',s=>s.get(k));
+const del=(store,k)=>tx(store,'readwrite',s=>s.delete(k));
+const clipsOf=night=>tx('clips','readonly',s=>s.index('night').getAll(night));
+
+/* ---------- helpers ---------- */
+const pad=n=>String(n).padStart(2,'0');
+const hm=t=>{const d=new Date(t);return pad(d.getHours())+':'+pad(d.getMinutes())};
+const dur=ms=>{const m=Math.round(ms/60000);return m<60?`${m} мин`:`${(m/60)|0} ч ${m%60} мин`};
+const MONTHS=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const nightName=t=>{const d=new Date(t);if(d.getHours()>=12)d.setDate(d.getDate()+1);return `Ночь на ${d.getDate()} ${MONTHS[d.getMonth()]}`};
+let toastT=0;const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),3200)};
+const store={get(k,d){try{const v=localStorage.getItem('sleep.'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('sleep.'+k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- the recognition model (Google YAMNet), loaded on first use ---------- */
+let modelP=null;
+const loadScript=src=>new Promise((res,rej)=>{if(window.tf)return res();const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('script'));document.head.appendChild(s)});
+function model(){if(modelP)return modelP;$('#modelState').textContent='Загружаю нейросеть…';
+  modelP=(async()=>{try{await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js');
+      const m=await tf.loadGraphModel('https://tfhub.dev/google/tfjs-model/yamnet/tfjs/1',{fromTFHub:true});
+      tf.tidy(()=>{const o=m.predict(tf.zeros([16000]));(Array.isArray(o)?o:[o]).forEach(t=>t.dataSync())}); // warm up
+      $('#modelState').textContent='Нейросеть готова';return m}
+    catch(e){console.error(e);modelP=null;$('#modelState').textContent='Нейросеть не загрузилась. Звуки сохранятся и распознаются позже, когда будет интернет.';return null}})();
+  return modelP}
+async function classify(x16){const m=await model();if(!m)return null;let x=x16;if(x.length<15600){const p=new Float32Array(15600);p.set(x);x=p}
+  const t=tf.tidy(()=>{const o=m.predict(tf.tensor1d(x));const s=Array.isArray(o)?o[0]:o;return s.max(0)}); // strongest moment of each sound type
+  const sc=await t.data();t.dispose();
+  let best='other',bs=0;for(const c of CATS){for(const i of c.idx){if(sc[i]>bs){bs=sc[i];best=c.id}}}
+  if(bs<.12)best='other';return{cat:best,conf:Math.round(bs*100)}}
+
+/* ---------- audio maths ---------- */
+function to16k(x,sr){const r=sr/16000,n=Math.floor(x.length/r),y=new Float32Array(n);
+  for(let i=0;i<n;i++){const a=Math.floor(i*r-r/2),b=Math.ceil(i*r+r/2);let s=0,c=0;for(let j=Math.max(0,a);j<Math.min(x.length,b);j++){s+=x[j];c++}y[i]=c?s/c:0}return y} // box filter keeps it free of aliasing well enough
+function wav16(x){const n=x.length,buf=new ArrayBuffer(44+n*2),v=new DataView(buf),ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+  let pk=0;for(let i=0;i<n;i++)pk=Math.max(pk,Math.abs(x[i]));const g=pk>0?Math.min(8,.9/pk):1; // normalise quiet clips so they are audible on playback
+  ws(0,'RIFF');v.setUint32(4,36+n*2,true);ws(8,'WAVE');ws(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,16000,true);v.setUint32(28,32000,true);v.setUint16(32,2,true);v.setUint16(34,16,true);ws(36,'data');v.setUint32(40,n*2,true);
+  for(let i=0;i<n;i++){const s=Math.max(-1,Math.min(1,x[i]*g));v.setInt16(44+i*2,s*32767,true)}return new Blob([buf],{type:'audio/wav'})}
+
+/* ---------- recorder: listens, finds loud moments, keeps a few seconds around each ---------- */
+const SENS={low:12,mid:9,high:6};
+let sens=store.get('sens','mid');
+const R={on:false,night:null,ctx:null,stream:null,proc:null,ring:null,RL:0,total:0,sr:48000,acc:0,n:0,block:4800,
+  floor:null,warm:[],ev:null,above:0,cool:0,min:null,counts:{},clipN:0,queue:Promise.resolve(),lastLevel:-90,wake:null,hiddenAt:0};
+const MAXCLIPS=300;
+
+function ingest(x){ // called with every chunk of microphone samples
+  const {ring,RL}=R;
+  for(let i=0;i<x.length;i++){const s=x[i];ring[R.total%RL]=s;R.total++;R.acc+=s*s;R.n++;if(R.n===R.block){block(10*Math.log10(R.acc/R.n+1e-12));R.acc=0;R.n=0}}}
+function block(dbv){
+  R.lastLevel=dbv;const now=Date.now();
+  const mk=Math.floor(now/60000);if(!R.min||R.min.k!==mk){if(R.min)pushMinute(R.min);R.min={k:mk,e:0,n:0,p:-120}}
+  R.min.e+=Math.pow(10,dbv/10);R.min.n++;R.min.p=Math.max(R.min.p,dbv);
+  if(R.floor==null){R.warm.push(dbv);if(R.warm.length>=30){const s=[...R.warm].sort((a,b)=>a-b);R.floor=s[15]}return}
+  if(!R.ev)R.floor+=(dbv-R.floor)*(dbv<R.floor?.05:.0025); // drops fast, rises slowly, so steady noise stops triggering
+  const th=R.floor+SENS[sens],hold=R.floor+4;
+  if(R.cool>0){R.cool--;return}
+  if(!R.ev){if(dbv>th&&dbv>-65){if(++R.above>=2)R.ev={start:Math.max(R.total-R.RL+1,R.total-R.above*R.block-Math.floor(1.5*R.sr)),t:now-1700,peak:dbv,quiet:0}}else R.above=0}
+  else{R.ev.peak=Math.max(R.ev.peak,dbv);R.ev.quiet=dbv<hold?R.ev.quiet+1:0;const len=R.total-R.ev.start;
+    if(R.ev.quiet>=25||len>=30*R.sr){const end=Math.min(R.total,R.total-R.ev.quiet*R.block+Math.floor(.6*R.sr));finish(R.ev,end);R.ev=null;R.above=0;R.cool=10}}}
+function finish(ev,end){
+  const n=end-ev.start;if(n<R.sr*.3)return;const x=new Float32Array(n);for(let i=0;i<n;i++)x[i]=R.ring[(ev.start+i)%R.RL];
+  const night=R.night.id,t=ev.t,peak=ev.peak,len=n/R.sr,sr=R.sr;
+  R.queue=R.queue.then(async()=>{const y=to16k(x,sr);let res=null;try{res=await classify(y)}catch(e){console.error(e)}
+    const cat=res?res.cat:'pending';R.counts[cat]=(R.counts[cat]||0)+1;R.night.counts=R.counts;R.night.events=(R.night.events||0)+1;
+    const keepAudio=R.clipN<MAXCLIPS;if(keepAudio)R.clipN++;
+    await put('clips',{id:night+'-'+t,night,t,len,peak:Math.round(peak),cat,conf:res?res.conf:0,wav:keepAudio?wav16(y):null});
+    await put('nights',R.night);renderLive()}).catch(e=>console.error(e))}
+function pushMinute(m){R.night.minutes.push([m.k,Math.round(10*Math.log10(m.e/m.n)),Math.round(m.p)]);put('nights',R.night).catch(()=>{})}
+
+async function startRec(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('Этот браузер не даёт доступ к микрофону. Откройте страницу в Safari.');return}
+  let stream;try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}})}
+  catch(e){toast('Нет доступа к микрофону. Разрешите его в настройках Safari для этого сайта.');return}
+  const AC=window.AudioContext||window.webkitAudioContext,ctx=new AC();await ctx.resume().catch(()=>{});
+  R.ctx=ctx;R.stream=stream;R.sr=ctx.sampleRate;R.block=Math.round(R.sr*.1);R.RL=Math.floor(R.sr*40);R.ring=new Float32Array(R.RL);
+  R.total=0;R.acc=0;R.n=0;R.floor=null;R.warm=[];R.ev=null;R.above=0;R.cool=0;R.min=null;R.counts={};R.clipN=0;
+  const src=ctx.createMediaStreamSource(stream),proc=ctx.createScriptProcessor(4096,1,1),mute=ctx.createGain();mute.gain.value=0;
+  proc.onaudioprocess=e=>{if(R.on)ingest(e.inputBuffer.getChannelData(0))};src.connect(proc);proc.connect(mute);mute.connect(ctx.destination);R.proc=proc;R.src=src;
+  R.night={id:'n'+Date.now(),start:Date.now(),end:null,minutes:[],counts:{},events:0,gaps:0};await put('nights',R.night);
+  R.on=true;model();wakeLock();showRec(true);renderLive();idle()}
+async function stopRec(){
+  if(!R.on)return;R.on=false;if(R.ev){finish(R.ev,R.total);R.ev=null}if(R.min)pushMinute(R.min);
+  try{R.proc.disconnect();R.src.disconnect();R.stream.getTracks().forEach(t=>t.stop());await R.ctx.close()}catch(e){}
+  if(R.wake){try{await R.wake.release()}catch(e){}R.wake=null}
+  R.night.end=Date.now();await R.queue;await put('nights',R.night);showRec(false);await renderHome();openNight(R.night.id)}
+async function wakeLock(){try{if('wakeLock' in navigator)R.wake=await navigator.wakeLock.request('screen')}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(!R.on)return;
+  if(document.hidden){R.hiddenAt=Date.now()}else{wakeLock();if(R.ctx&&R.ctx.state!=='running')R.ctx.resume().catch(()=>{});
+    if(R.hiddenAt&&Date.now()-R.hiddenAt>15000){R.night.gaps=(R.night.gaps||0)+1;toast(`Запись прерывалась на ${dur(Date.now()-R.hiddenAt)}: экран был заблокирован`)}R.hiddenAt=0}});
+
+/* ---------- recording screen ---------- */
+let idleT=0;
+function idle(){clearTimeout(idleT);$('#dimmer').classList.remove('on');idleT=setTimeout(()=>{if(R.on)$('#dimmer').classList.add('on')},20000)}
+$('#dimmer').addEventListener('click',idle);$('#rec').addEventListener('click',e=>{if(!e.target.closest('#stopBtn'))idle()});
+function showRec(on){$('#rec').hidden=!on;if(!on){$('#dimmer').classList.remove('on');clearTimeout(idleT)}}
+function renderLive(){const ids=Object.keys(R.counts).filter(k=>R.counts[k]>0).sort((a,b)=>R.counts[b]-R.counts[a]);
+  fill($('#live'),ids.length?ids.map(k=>`<span class="chip">${icon(catIcon(k))}${CBY[k].name} <b>${R.counts[k]}</b></span>`).join(''):'<span class="chip">Пока тихо</span>')}
+setInterval(()=>{if(!R.on)return;const d=new Date();$('#clock').textContent=pad(d.getHours())+':'+pad(d.getMinutes());$('#elapsed').textContent=dur(Date.now()-R.night.start);
+  const toPct=v=>Math.max(0,Math.min(100,(v+80)/60*100));$('#lvl').style.width=toPct(R.lastLevel)+'%';if(R.floor!=null)$('#thr').style.left=toPct(R.floor+SENS[sens])+'%'},250);
+let stopArm=0;
+$('#stopBtn').addEventListener('click',()=>{const b=$('#stopBtn');if(!b.classList.contains('armed')){b.classList.add('armed');fill(b,icon('stop')+'Нажмите ещё раз, чтобы остановить');clearTimeout(stopArm);
+    stopArm=setTimeout(()=>{b.classList.remove('armed');fill(b,icon('stop')+'Остановить')},3500);return}
+  clearTimeout(stopArm);b.classList.remove('armed');fill(b,icon('stop')+'Остановить');stopRec()});
+
+/* ---------- home ---------- */
+const summary=counts=>{const ids=Object.keys(counts||{}).filter(k=>counts[k]>0).sort((a,b)=>counts[b]-counts[a]).slice(0,4);return ids.length?ids.map(k=>`${CBY[k].name} ${counts[k]}`).join(' · '):'Тихая ночь'};
+async function renderHome(){let ns=[];try{ns=(await getAll('nights')).filter(n=>n.end).sort((a,b)=>b.start-a.start)}catch(e){}
+  fill($('#nights'),ns.length?ns.map(n=>`<button class="nightcard" data-n="${n.id}"><b>${nightName(n.start)}</b><span class="when">${hm(n.start)} – ${hm(n.end)} · ${dur(n.end-n.start)}</span><span class="sum">${summary(n.counts)}</span></button>`).join('')
+    :'<div class="empty">Здесь появятся ваши ночи. Запишите первую сегодня вечером.</div>')}
+function renderSens(){document.querySelectorAll('#sens button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===sens)))}
+$('#sens').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;sens=b.dataset.v;store.set('sens',sens);renderSens()});
+$('#startBtn').addEventListener('click',startRec);
+$('#nights').addEventListener('click',e=>{const b=e.target.closest('[data-n]');if(b)openNight(b.dataset.n)});
+
+/* ---------- night report ---------- */
+let cur=null,curClips=[],filter='all',player=null,playing=null;
+async function openNight(id){cur=await getOne('nights',id);if(!cur)return;curClips=(await clipsOf(id)).sort((a,b)=>a.t-b.t);filter='all';
+  $('#home').hidden=true;$('#night').hidden=false;window.scrollTo(0,0);
+  $('#nTitle').textContent=nightName(cur.start);$('#nWhen').textContent=`${hm(cur.start)} – ${hm(cur.end||Date.now())} · ${dur((cur.end||Date.now())-cur.start)}`+(cur.gaps?` · запись прерывалась ${cur.gaps} раз`:'');
+  const sn=curClips.filter(c=>c.cat==='snore'),loud=cur.minutes.reduce((m,x)=>x[2]>m[2]?x:m,[0,-120,-120]);
+  fill($('#nTiles'),[[String(curClips.length),'записанных звуков'],[sn.length?dur(sn.reduce((s,c)=>s+c.len*1000,0)):'0 мин','храпа (примерно)'],
+    [cur.minutes.length?Math.round(cur.minutes.reduce((s,x)=>s+x[1],0)/cur.minutes.length)+' дБ':'—','средний фон'],[loud[2]>-120?hm(loud[0]*60000):'—','самый громкий момент']]
+    .map(([b,s])=>`<div class="tile"><b>${b}</b><span>${s}</span></div>`).join(''));
+  drawChart();renderClips();reclassifyPending()}
+function renderClips(){const counts={};curClips.forEach(c=>counts[c.cat]=(counts[c.cat]||0)+1);
+  const ids=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  fill($('#filters'),`<button class="chip" data-f="all" aria-pressed="${filter==='all'}">Все <b>${curClips.length}</b></button>`+ids.map(k=>`<button class="chip" data-f="${k}" aria-pressed="${filter===k}">${icon(catIcon(k))}${CBY[k].name} <b>${counts[k]}</b></button>`).join(''));
+  const list=curClips.filter(c=>filter==='all'||c.cat===filter);
+  fill($('#clips'),list.length?list.map(c=>`<div class="clip" data-c="${c.id}"><span class="ic">${icon(catIcon(c.cat))}</span><span class="meta"><b>${CBY[c.cat].name}</b><span>${hm(c.t)} · ${Math.max(1,Math.round(c.len))} с${c.conf?` · уверенность ${c.conf}%`:''}</span></span>`+
+    (c.wav?`<button class="play" data-play="${c.id}" aria-label="Послушать">${icon(playing===c.id?'pause':'play')}</button>`:'')+`<button class="del" data-del="${c.id}" aria-label="Удалить звук">${icon('trash')}</button></div>`).join('')
+    :'<div class="empty">Ничего не записалось. Похоже, ночь была тихой, или попробуйте чувствительность «Высокая».</div>')}
+$('#filters').addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b)return;filter=b.dataset.f;renderClips()});
+$('#clips').addEventListener('click',async e=>{const p=e.target.closest('[data-play]'),d=e.target.closest('[data-del]');
+  if(p){const c=curClips.find(x=>x.id===p.dataset.play);if(!c)return;if(player){player.pause();URL.revokeObjectURL(player.src)}
+    if(playing===c.id){playing=null;player=null;renderClips();return}
+    player=new Audio(URL.createObjectURL(c.wav));playing=c.id;player.onended=()=>{playing=null;renderClips()};player.play().catch(()=>toast('Не получилось включить звук'));renderClips()}
+  if(d){if(!d.classList.contains('armed')){document.querySelectorAll('.del.armed').forEach(x=>x.classList.remove('armed'));d.classList.add('armed');d.setAttribute('aria-label','Нажмите ещё раз, чтобы удалить');setTimeout(()=>d.classList.remove('armed'),3000);return}
+    await del('clips',d.dataset.del);curClips=curClips.filter(x=>x.id!==d.dataset.del);renderClips();toast('Звук удалён')}});
+async function reclassifyPending(){const pend=curClips.filter(c=>c.cat==='pending'&&c.wav);if(!pend.length)return;
+  for(const c of pend){try{const buf=await c.wav.arrayBuffer(),v=new DataView(buf),n=(buf.byteLength-44)/2,x=new Float32Array(n);for(let i=0;i<n;i++)x[i]=v.getInt16(44+i*2,true)/32768;
+    const r=await classify(x);if(!r)return;c.cat=r.cat;c.conf=r.conf;await put('clips',c)}catch(e){return}}
+  if(cur){const counts={};curClips.forEach(c=>counts[c.cat]=(counts[c.cat]||0)+1);cur.counts=counts;await put('nights',cur)}renderClips();renderHome()}
+$('#backBtn').addEventListener('click',()=>{if(player){player.pause();player=null;playing=null}$('#night').hidden=true;$('#home').hidden=false;renderHome()});
+$('#delNight').addEventListener('click',async()=>{const b=$('#delNight');if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Нажмите ещё раз: ночь и все её звуки удалятся';setTimeout(()=>{b.classList.remove('armed');b.textContent='Удалить эту ночь'},3500);return}
+  for(const c of curClips)await del('clips',c.id);await del('nights',cur.id);b.classList.remove('armed');b.textContent='Удалить эту ночь';$('#night').hidden=true;$('#home').hidden=false;renderHome();toast('Ночь удалена')});
+
+/* loudness chart: one series (average level per minute), crosshair + tooltip on hover, event dots on the baseline */
+function drawChart(){const svg=$('#chart'),W=svg.clientWidth||340,H=190,pl=34,pr=8,pt=10,pb=26,ms=cur.minutes;
+  if(ms.length<2){fill(svg,`<text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#9a9aa0" font-size="13">Слишком короткая запись для графика</text>`);return}
+  const t0=ms[0][0],t1=ms[ms.length-1][0],lo=-80,hi=-20,X=k=>pl+(k-t0)/Math.max(1,t1-t0)*(W-pl-pr),Y=v=>pt+(1-(Math.max(lo,Math.min(hi,v))-lo)/(hi-lo))*(H-pt-pb);
+  let g='';[-70,-50,-30].forEach(v=>{g+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="#2a2a2e" stroke-width="1"/><text x="${pl-6}" y="${Y(v)+4}" text-anchor="end" fill="#5a5a60" font-size="11">${v}</text>`});
+  const hours=[];for(let k=Math.ceil(t0/60)*60;k<=t1;k+=60)hours.push(k);const step=Math.ceil(hours.length/6)||1;
+  hours.forEach((k,i)=>{if(i%step)return;g+=`<text x="${X(k)}" y="${H-6}" text-anchor="middle" fill="#9a9aa0" font-size="11">${hm(k*60000)}</text>`});
+  const line=ms.map((m,i)=>`${i?'L':'M'}${X(m[0]).toFixed(1)} ${Y(m[1]).toFixed(1)}`).join(' ');
+  g+=`<defs><linearGradient id="ar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3f3f0" stop-opacity=".28"/><stop offset="1" stop-color="#f3f3f0" stop-opacity="0"/></linearGradient></defs>`;
+  g+=`<path d="${line} L${X(t1)} ${Y(lo)} L${X(t0)} ${Y(lo)} Z" fill="url(#ar)"/><path d="${line}" fill="none" stroke="#f3f3f0" stroke-width="2" stroke-linejoin="round"/>`;
+  curClips.forEach(c=>{const k=c.t/60000;if(k<t0||k>t1+1)return;g+=`<circle cx="${X(Math.min(t1,k))}" cy="${Y(lo)-5}" r="4" fill="#f3f3f0" stroke="#111113" stroke-width="2"/>`});
+  const last=ms[ms.length-1];g+=`<circle cx="${X(last[0])}" cy="${Y(last[1])}" r="4" fill="#f3f3f0" stroke="#111113" stroke-width="2"/>`;
+  g+=`<line id="xh" x1="0" x2="0" y1="${pt}" y2="${H-pb}" stroke="#9a9aa0" stroke-width="1" opacity="0"/><rect x="${pl}" y="0" width="${W-pl-pr}" height="${H}" fill="transparent" id="hit"/>`;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);fill(svg,g);
+  const tip=$('#tip'),xh=svg.querySelector('#xh');
+  const move=e=>{const r=svg.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width;let best=ms[0];for(const m of ms)if(Math.abs(X(m[0])-x)<Math.abs(X(best[0])-x))best=m;
+    const ev=curClips.filter(c=>Math.floor(c.t/60000)===best[0]).map(c=>CBY[c.cat].name);
+    xh.setAttribute('x1',X(best[0]));xh.setAttribute('x2',X(best[0]));xh.setAttribute('opacity','1');
+    tip.textContent=`${hm(best[0]*60000)} · ${best[1]} дБ`+(ev.length?` · ${ev.join(', ')}`:'');tip.style.left=(X(best[0])/W*r.width+12)+'px';tip.style.top=(Y(best[1])/H*r.height+16)+'px';tip.style.opacity='1'};
+  const hit=svg.querySelector('#hit');hit.addEventListener('pointermove',move);hit.addEventListener('pointerdown',move);hit.addEventListener('pointerleave',()=>{tip.style.opacity='0';xh.setAttribute('opacity','0')})}
+addEventListener('resize',()=>{if(cur&&!$('#night').hidden)drawChart()});
+
+/* ---------- boot ---------- */
+fill($('#logo'),icon('logo'));fill($('#startBtn'),icon('mic'));fill($('#stopBtn'),icon('stop')+'Остановить');fill($('#backBtn'),icon('back')+'Все ночи');
+fill($('#tips'),[['plug','Поставьте телефон на зарядку: экран будет включён всю ночь.'],['screen','Не блокируйте экран и не переключайтесь на другие приложения, иначе Safari выключит микрофон.'],
+  ['mic','Положите телефон микрофоном к кровати, на расстоянии вытянутой руки.'],['shh','Звуки хранятся только на этом телефоне и никуда не отправляются.']]
+  .map(([i,t])=>`<li><span>${icon(i)}</span>${t}</li>`).join(''));
+renderSens();renderHome();
+// a night that was cut off (page closed mid-recording) is finished on next open so it still shows up
+getAll('nights').then(ns=>ns.filter(n=>!n.end).forEach(n=>{n.end=n.minutes.length?(n.minutes[n.minutes.length-1][0]+1)*60000:n.start;put('nights',n).then(renderHome)})).catch(()=>{});})();
+</script>
+</body>
+</html>
